@@ -1,3 +1,4 @@
-libraryDependencies += "org.scalaz" %% "scalaz-zio" % "0.16"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+libraryDependencies ++= Seq(
+  "org.scalaz" %% "scalaz-zio" % "0.16",
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+)

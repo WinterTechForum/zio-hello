@@ -4,14 +4,13 @@ import java.util
 import org.scalatest.{FlatSpec, Matchers}
 import scalaz.zio.{Exit, Runtime, UIO, ZIO}
 import scalaz.zio.console.Console
-import scalaz.zio.console.Console.Service
 import scalaz.zio.internal.{Executor, Platform, PlatformLive}
 
 class MyAppSpec extends FlatSpec with Matchers {
 
   def testableRuntime(inputs: List[String]) = {
-    new Runtime[TestableConsole] {
-      override val Environment: TestableConsole = new TestableConsole {
+    new Runtime[TestableConsole with Logger] {
+      override val Environment = new TestableConsole with NopLogger {
         override def in = inputs
       }
 
@@ -34,8 +33,10 @@ class MyAppSpec extends FlatSpec with Matchers {
     val exit = runtime.unsafeRunSync(MyApp.myAppLogic)
     exit.succeeded should be (true)
     val out = runtime.Environment.out.result()
-    out should contain ("Hello! What is your name?\n")
-    out should contain ("Hello, asdf, welcome to ZIO!\n")
+    out shouldEqual List(
+      "Hello! What is your name?\n",
+      "Hello, asdf, welcome to ZIO!\n"
+    )
   }
 
   "MyApp" should "fail with no input" in {
@@ -43,7 +44,21 @@ class MyAppSpec extends FlatSpec with Matchers {
     val exit = runtime.unsafeRunSync(MyApp.myAppLogic)
     exit.succeeded should be (false)
     val out = runtime.Environment.out.result()
-    out should contain only "Hello! What is your name?\n"
+    out shouldEqual List(
+      "Hello! What is your name?\n",
+      "Error reading input: no more inputs\n"
+    )
+  }
+
+  "MyApp" should "fail with an empty input" in {
+    val runtime = testableRuntime(List(""))
+    val exit = runtime.unsafeRunSync(MyApp.myAppLogic)
+    exit.succeeded should be (false)
+    val out = runtime.Environment.out.result()
+    out shouldEqual List(
+      "Hello! What is your name?\n",
+      "You must specify a name\n"
+    )
   }
 
 }
@@ -52,7 +67,7 @@ trait TestableConsole extends Console {
   val out = List.newBuilder[String]
   def in: List[String]
 
-  val console: Service[Any] = new Service[Any] {
+  val console: Console.Service[Any] = new Console.Service[Any] {
     val inIterator = in.iterator
 
     final def putStr(line: String): UIO[Unit] = UIO {
@@ -71,5 +86,15 @@ trait TestableConsole extends Console {
         ZIO.fail(new IOException("no more inputs"))
       }
     }
+  }
+}
+
+trait NopLogger extends Logger {
+  override val logger = new Logger.Service[Any] {
+    override def info(s: String) = ZIO.unit
+
+    override def error(s: String) = ZIO.unit
+
+    override def error(e: Throwable) = ZIO.unit
   }
 }
