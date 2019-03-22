@@ -10,3 +10,5 @@ dockerPermissionStrategy := com.typesafe.sbt.packager.docker.DockerPermissionStr
 dockerRepository := sys.props.get("docker.repo")
 
 dockerUsername := sys.props.get("docker.username")
+
+packageName := sys.props.get("docker.packagename").getOrElse(name.value)
