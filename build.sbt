@@ -7,4 +7,6 @@ libraryDependencies ++= Seq(
 
 dockerPermissionStrategy := com.typesafe.sbt.packager.docker.DockerPermissionStrategy.Run
 
-dockerRepository := sys.props.get("docker.image")
+dockerRepository := sys.props.get("docker.repo")
+
+dockerUsername := sys.props.get("docker.username")
