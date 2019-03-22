@@ -5,4 +5,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
 
+dockerPermissionStrategy := com.typesafe.sbt.packager.docker.DockerPermissionStrategy.Run
+
 dockerRepository := sys.props.get("docker.image")
