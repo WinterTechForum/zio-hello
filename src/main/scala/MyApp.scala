@@ -1,7 +1,8 @@
-import java.io.IOException
+import java.io.{EOFException, IOException}
 
-import scalaz.zio.{App, UIO, ZIO}
+import scalaz.zio.{App, ZIO}
 import scalaz.zio.console._
+import Logger.logger._
 
 object MyApp extends App {
 
@@ -16,42 +17,36 @@ object MyApp extends App {
     }.fold(_ => 1, _ => 0)
   }
 
-  sealed trait StrReadError
-  case object EOF extends StrReadError
-  case class IOError(ioException: IOException) extends StrReadError
-
-  def getStrLnNonEmpty: ZIO[Console, StrReadError, String] = {
-    getStrLn.refineOrDie {
-      case e: IOException => IOError(e)
-    } flatMap { s =>
-      if (s == null || s.isEmpty)
-        ZIO.fail(EOF)
+  def getStrLnNonEmpty: ZIO[Console, IOException, String] = {
+    getStrLn.flatMap { s =>
+      if (s.isEmpty)
+        ZIO.fail(new EOFException("Input was empty"))
       else
         ZIO.succeed(s)
     }
   }
 
 
-  val myAppLogic: ZIO[MyEnv, StrReadError, Unit] = {
+  val myAppLogic: ZIO[MyEnv, IOException, Unit] = {
     val sayHello = for {
       _ <- putStrLn("Hello! What is your name?")
       n <- getStrLnNonEmpty
-      _ <- ZIO.accessM[Logger](_.logger.info(s"$n was here"))
+      _ <- info(s"$n was here")
       _ <- putStrLn(s"Hello, $n, welcome to ZIO!")
     } yield ()
 
     sayHello.catchSome {
-      case EOF =>
+      case e: EOFException =>
         for {
           _ <- putStrLn("You must specify a name")
-          _ <- ZIO.accessM[Logger](_.logger.error("Name was not specified"))
-          _ <- ZIO.fail(EOF)
+          _ <- error("Name was not specified")
+          _ <- ZIO.fail(e)
         } yield ()
-      case IOError(e) =>
+      case e: IOException =>
         for {
           _ <- putStrLn(s"Error reading input: ${e.getMessage}")
-          _ <- ZIO.accessM[Logger](_.logger.error(e))
-          _ <- ZIO.fail(IOError(e))
+          _ <- error(e)
+          _ <- ZIO.fail(e)
         } yield ()
     }
   }

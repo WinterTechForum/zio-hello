@@ -1,10 +1,9 @@
 import java.io.IOException
-import java.util
 
 import org.scalatest.{FlatSpec, Matchers}
-import scalaz.zio.{Exit, Runtime, UIO, ZIO}
 import scalaz.zio.console.Console
-import scalaz.zio.internal.{Executor, Platform, PlatformLive}
+import scalaz.zio.internal.{Platform, PlatformLive}
+import scalaz.zio.{Exit, Runtime, UIO, ZIO}
 
 class MyAppSpec extends FlatSpec with Matchers {
 
@@ -17,13 +16,13 @@ class MyAppSpec extends FlatSpec with Matchers {
       val basePlatform = PlatformLive.Default
 
       override val Platform = new Platform {
-        override def executor: Executor = basePlatform.executor
+        override def executor = basePlatform.executor
 
-        override def nonFatal(t: Throwable): Boolean = basePlatform.nonFatal(t)
+        override def fatal(t: Throwable) = basePlatform.fatal(t)
 
         override def reportFailure(cause: Exit.Cause[_]): Unit = ()
 
-        override def newWeakHashMap[A, B](): util.Map[A, B] = basePlatform.newWeakHashMap()
+        override def newWeakHashMap[A, B]() = basePlatform.newWeakHashMap()
       }
     }
   }

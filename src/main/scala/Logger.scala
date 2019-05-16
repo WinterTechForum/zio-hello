@@ -1,4 +1,4 @@
-import scalaz.zio.{UIO, ZIO}
+import scalaz.zio.ZIO
 
 trait Logger extends Serializable {
   val logger: Logger.Service[Any]
@@ -6,31 +6,40 @@ trait Logger extends Serializable {
 
 object Logger extends Serializable {
   trait Service[R] {
-    def info(s: String): UIO[Unit]
-    def error(s: String): UIO[Unit]
-    def error(e: Throwable): UIO[Unit]
+    def info(s: String): ZIO[Logger, Nothing, Unit]
+    def error(s: String): ZIO[Logger, Nothing, Unit]
+    def error(e: Throwable): ZIO[Logger, Nothing, Unit]
   }
 
   object Dev extends Logger {
     override val logger: Service[Any] = new Service[Any] {
-      override def info(s : String): UIO[Unit] = {
+      override def info(s : String): ZIO[Logger, Nothing, Unit] = {
         ZIO.effectTotal {
-          println(s)
+          println(s"[info] $s")
         }
       }
 
-      override def error(s: String): UIO[Unit] = {
+      override def error(s: String): ZIO[Logger, Nothing, Unit] = {
         ZIO.effectTotal {
-          println(s)
+          println(s"[error] $s")
         }
       }
 
-      override def error(e: Throwable): UIO[Unit] = {
+      override def error(e: Throwable): ZIO[Logger, Nothing, Unit] = {
         ZIO.effectTotal {
-          println(e.getMessage)
+          println(s"[error] ${e.getMessage}")
           e.printStackTrace()
         }
       }
     }
   }
+
+  object logger extends Logger.Service[Logger] {
+    override def info(s: String): ZIO[Logger, Nothing, Unit] = ZIO.accessM[Logger](_.logger.info(s))
+
+    override def error(s: String): ZIO[Logger, Nothing, Unit] = ZIO.accessM[Logger](_.logger.error(s))
+
+    override def error(e: Throwable): ZIO[Logger, Nothing, Unit] = ZIO.accessM[Logger](_.logger.error(e))
+  }
+
 }
