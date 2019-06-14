@@ -1,45 +1,31 @@
-import scalaz.zio.ZIO
+import scalaz.zio.{ZIO, console}
+import scalaz.zio.console.Console
 
-trait Logger extends Serializable {
-  val logger: Logger.Service[Any]
+trait Logger[A] extends Serializable {
+  val logger: Logger.Service[A]
 }
 
 object Logger extends Serializable {
-  trait Service[R] {
-    def info(s: String): ZIO[Logger, Nothing, Unit]
-    def error(s: String): ZIO[Logger, Nothing, Unit]
-    def error(e: Throwable): ZIO[Logger, Nothing, Unit]
+  trait Service[A] {
+    def info(s: String): ZIO[A, Nothing, Unit]
   }
 
-  object Dev extends Logger {
-    override val logger: Service[Any] = new Service[Any] {
-      override def info(s : String): ZIO[Logger, Nothing, Unit] = {
-        ZIO.effectTotal {
-          println(s"[info] $s")
-        }
-      }
-
-      override def error(s: String): ZIO[Logger, Nothing, Unit] = {
-        ZIO.effectTotal {
-          println(s"[error] $s")
-        }
-      }
-
-      override def error(e: Throwable): ZIO[Logger, Nothing, Unit] = {
-        ZIO.effectTotal {
-          println(s"[error] ${e.getMessage}")
-          e.printStackTrace()
-        }
+  object StdOut extends Logger[Console] {
+    override val logger: Service[Console] = new Service[Console] {
+      override def info(s : String): ZIO[Console, Nothing, Unit] = {
+        console.putStrLn(s"[info] $s")
       }
     }
   }
 
-  object logger extends Logger.Service[Logger] {
-    override def info(s: String): ZIO[Logger, Nothing, Unit] = ZIO.accessM[Logger](_.logger.info(s))
+  object Nop extends Logger[Nothing] {
+    override val logger: Service[Nothing] = new Service[Nothing] {
+      override def info(s : String): ZIO[Nothing, Nothing, Unit] = ZIO.unit
+    }
+  }
 
-    override def error(s: String): ZIO[Logger, Nothing, Unit] = ZIO.accessM[Logger](_.logger.error(s))
-
-    override def error(e: Throwable): ZIO[Logger, Nothing, Unit] = ZIO.accessM[Logger](_.logger.error(e))
+  case class logger[A]() extends Logger.Service[Logger[A]] {
+    override def info(s: String): ZIO[Logger[A], Nothing, Unit] = ZIO.accessM[Logger[A]](_.logger.info(s))
   }
 
 }
